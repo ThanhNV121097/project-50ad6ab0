@@ -6,7 +6,7 @@ import styles from "./CenteredMessage.module.css";
 
 type MessageResponse =
   | { state: "loading" }
-  | { state: "error"; error: { code: "INTERNAL"; message: string } }
+  | { state: "error" }
   | { state: "empty" }
   | { state: "success"; message: string };
 
@@ -21,18 +21,23 @@ export function CenteredMessage() {
     fetch(`${apiBase}/v1/message`, { signal: controller.signal })
       .then(async (res) => {
         if (!res.ok) {
+          if (res.status === 404) {
+            setResponse({ state: "empty" });
+            return null;
+          }
           throw new Error("request failed");
         }
         return res.json() as Promise<{ state?: string; message?: string }>;
       })
       .then((data) => {
+        if (!data) return;
         if (typeof data.message === "string" && data.message.trim()) {
           setResponse({ state: "success", message: data.message });
           return;
         }
         setResponse({ state: "empty" });
       })
-      .catch(() => setResponse({ state: "error", error: { code: "INTERNAL", message: "request failed" } }));
+      .catch(() => setResponse({ state: "error" }));
 
     return () => controller.abort();
   }, []);

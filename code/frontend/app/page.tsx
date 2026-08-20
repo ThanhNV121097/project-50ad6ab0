@@ -1,6 +1,9 @@
-import { MessagePage } from '../components/MessagePage';
-import { messageMock } from '../lib/mock/store-and-serve-message';
-
 export default function Home() {
-  return <MessagePage response={messageMock} />;
+  return <main className="flex min-h-screen items-center justify-center bg-white text-black">
+    <Message />
+  </main>;
+}
+
+function Message() {
+  return <h1>Hello Word</h1>;
 }

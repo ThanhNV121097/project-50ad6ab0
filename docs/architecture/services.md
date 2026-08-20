@@ -227,7 +227,7 @@ No third-party systems. Only internal SQL dependency exists.
 | Step | Forward | Backward | Safe on populated tables |
 |---|---|---|---|
 | 1 | Create `messages` table and constraints from ERD; seed canonical row `Hello Word` with `ON CONFLICT DO NOTHING` | Drop `messages` table | Safe when table absent; not safe over existing differently-shaped `messages` table without manual review |
-| 2 | Add backend contract `GET /api/v1/message` returning `{ "state": "ready", "message": string }` | Remove endpoint before frontend depends on real API; after frontend integration, rollback frontend first | yes; read-only endpoint |
+| 2 | Add backend contract `GET /api/v1/message` returning `{ "message": string }` | Remove endpoint before frontend depends on real API; after frontend integration, rollback frontend first | yes; read-only endpoint |
 | 3 | Add `GET /healthz` readiness check | Remove health route only if deployment health probe changes first | yes; read-only endpoint |
 
 No irreversible service migration.

@@ -17,10 +17,12 @@ export function MessagePage() {
     fetch(`${apiBase}/v1/message`, { signal: controller.signal })
       .then(async (response) => {
         if (response.status === 404) {
+          setMessage('');
           setState('empty');
           return;
         }
         if (!response.ok) {
+          setMessage('');
           setState('error');
           return;
         }
@@ -28,7 +30,10 @@ export function MessagePage() {
         setMessage(data.message);
         setState('ready');
       })
-      .catch(() => setState('error'));
+      .catch(() => {
+        setMessage('');
+        setState('error');
+      });
 
     return () => controller.abort();
   }, []);
@@ -37,11 +42,7 @@ export function MessagePage() {
     return <main className={styles.shell} aria-busy="true" aria-live="polite"><p className={styles.message}>Loading</p></main>;
   }
 
-  if (state === 'error') {
-    return <main className={styles.shell} aria-live="polite"><p className={styles.message}>Error</p></main>;
-  }
-
-  if (state === 'empty') {
+  if (state === 'error' || state === 'empty') {
     return <main className={styles.shell} aria-live="polite" />;
   }
 

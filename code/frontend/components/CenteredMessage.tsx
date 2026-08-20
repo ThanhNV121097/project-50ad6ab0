@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-import type { MessageResponse } from "../lib/mock/render-centered-message";
 import styles from "./CenteredMessage.module.css";
+
+type MessageResponse =
+  | { state: "loading" }
+  | { state: "error"; error: { code: "INTERNAL"; message: string } }
+  | { state: "empty" }
+  | { state: "success"; message: string };
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 

@@ -3,16 +3,12 @@
 import { useEffect, useState } from 'react';
 import styles from './MessagePage.module.css';
 
-type MessageResponse =
-  | { state: 'loading' }
-  | { state: 'empty' }
-  | { state: 'error'; error: { code: 'NOT_FOUND' | 'UNAVAILABLE' | 'INTERNAL'; message: string } }
-  | { state: 'ready'; message: string };
+type MessageResponse = { message: string };
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '/api';
 
 export function MessagePage() {
-  const [response, setResponse] = useState<MessageResponse>({ state: 'loading' });
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -24,30 +20,16 @@ export function MessagePage() {
           headers: { Accept: 'application/json' },
         });
 
-        const data = await res.json().catch(() => null);
+        const data = (await res.json().catch(() => null)) as MessageResponse | null;
 
-        if (!res.ok) {
-          if (res.status === 404) {
-            setResponse({ state: 'empty' });
-            return;
-          }
-
-          setResponse({
-            state: 'error',
-            error: {
-              code: data?.error?.code ?? 'INTERNAL',
-              message: data?.error?.message ?? 'Request failed',
-            },
-          });
+        if (!res.ok || typeof data?.message !== 'string') {
+          setMessage(null);
           return;
         }
 
-        setResponse({ state: 'ready', message: data.message });
+        setMessage(data.message);
       } catch {
-        setResponse({
-          state: 'error',
-          error: { code: 'INTERNAL', message: 'Request failed' },
-        });
+        setMessage(null);
       }
     }
 
@@ -56,33 +38,9 @@ export function MessagePage() {
     return () => controller.abort();
   }, []);
 
-  if (response.state === 'loading') {
-    return (
-      <main className={styles.shell} aria-busy="true" aria-live="polite">
-        <p className={styles.message}>Loading</p>
-      </main>
-    );
-  }
-
-  if (response.state === 'error') {
-    return (
-      <main className={styles.shell} aria-live="polite">
-        <p className={styles.message}>Error</p>
-      </main>
-    );
-  }
-
-  if (response.state === 'empty') {
-    return (
-      <main className={styles.shell} aria-live="polite">
-        <p className={styles.message}>No message</p>
-      </main>
-    );
-  }
-
   return (
     <main className={styles.shell}>
-      <h1 className={styles.message}>{response.message}</h1>
+      {message ? <h1 className={styles.message}>{message}</h1> : null}
     </main>
   );
 }

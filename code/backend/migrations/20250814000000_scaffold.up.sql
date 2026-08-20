@@ -1,0 +1,2 @@
+-- Scaffold migration keeps migration runner exercised.
+-- Product tables are added by ERD/story backend tasks.

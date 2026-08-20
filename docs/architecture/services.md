@@ -218,7 +218,7 @@ No third-party systems. Only internal SQL dependency exists.
 |---|---|---|
 | Add optional response field to `GET /api/v1/message` | additive | frontend ignores unknown fields |
 | Add new endpoint under `/api/v1` | additive | no migration needed |
-| Rename `state` or `message` field, change its type, or wrap response | breaking | add `/api/v2/message`, migrate frontend, then deprecate v1 with `Deprecation` header |
+| Rename `message` field, change its type, add required response field, or wrap response | breaking | add `/api/v2/message`, migrate frontend, then deprecate v1 with `Deprecation` header |
 | Add auth to `GET /api/v1/message` | breaking | create protected v2 endpoint or keep public v1 until replacement deployed |
 | Allow multiple messages | breaking for data and API semantics | revise SRS/ERD, add selection contract, migrate data after frontend understands new shape |
 

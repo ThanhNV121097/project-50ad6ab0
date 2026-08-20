@@ -39,7 +39,7 @@ export function MessagePage() {
   }, []);
 
   if (state === 'loading') {
-    return <main className={styles.shell} aria-busy="true" aria-live="polite"><p className={styles.message}>Loading</p></main>;
+    return <main className={styles.shell} aria-busy="true" aria-live="polite" />;
   }
 
   if (state === 'error' || state === 'empty') {

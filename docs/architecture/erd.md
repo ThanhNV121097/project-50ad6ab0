@@ -10,7 +10,7 @@ Reviewed UI mock: `code/frontend/lib/mock/store-and-serve-message.ts`
 
 This schema stores one public message row used by backend API and rendered by frontend. Aggregate root is `messages`; no users, permissions, history, navigation, or editing records exist because SRS excludes them.
 
-The reviewed UI mock needs one successful message string and failure states for loading, error, and empty. Loading is frontend-only before HTTP completion. Empty and error map to backend error outcomes. No extra database entity is needed for UI state.
+The reviewed UI mock needs one successful `{ "message": string }` payload and failure states for loading, error, and empty. Loading is frontend-only before HTTP completion. Empty and error map to backend error outcomes. No extra database entity is needed for UI state.
 
 ## 2. Diagram
 

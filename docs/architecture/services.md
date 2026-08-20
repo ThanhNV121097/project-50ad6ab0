@@ -57,7 +57,7 @@ Every non-2xx JSON response from `/api/v1/*` has this shape:
 
 Consumers branch on `code`. `message` may change without contract notice. `details` is empty when no field-level validation error exists.
 
-The reviewed UI mock accepts `error.code` values `INTERNAL`, `UNAVAILABLE`, and `NOT_FOUND`; backend also returns `VALIDATION_FAILED` for corrupt stored content. Frontend BE integration must map any API error into mock state `error`, and map `NOT_FOUND` to mock state `empty` if it wants current empty UI branch.
+The reviewed UI mock accepts success payload `{ "message": string }` and error outcomes with `error.code` values `INTERNAL`, `UNAVAILABLE`, and `NOT_FOUND`; backend also returns `VALIDATION_FAILED` for corrupt stored content. Frontend BE integration must map any API error into UI state `error`, and map `NOT_FOUND` to UI state `empty` if it wants current empty UI branch.
 
 **Error catalog** — closed set for this project.
 
@@ -115,15 +115,15 @@ No request body. Requests with body content are ignored; clients must not send o
 
 ```json
 {
-  "state": "ready",
   "message": "Hello Word"
 }
 ```
 
 | Field | Type | Nullable | Description |
 |---|---|---|---|
-| `state` | string enum `ready` | no | Matches reviewed frontend mock success discriminator |
 | `message` | string | no | Current stored message content, one printable non-empty line, served unchanged as plain text |
+
+**Mock alignment** — Reviewed UI mock `MessageApiResponse` is exactly `{ "message": string }`. Service intentionally omits a `state` success discriminator because frontend state is local UI state, not API data.
 
 **Errors** — every code this endpoint can return. No others.
 
@@ -218,7 +218,7 @@ No third-party systems. Only internal SQL dependency exists.
 |---|---|---|
 | Add optional response field to `GET /api/v1/message` | additive | frontend ignores unknown fields |
 | Add new endpoint under `/api/v1` | additive | no migration needed |
-| Rename `state` or `message` field, change its type, or wrap response | breaking | add `/api/v2/message`, migrate frontend, then deprecate v1 with `Deprecation` header |
+| Rename `message` field, change its type, add required response field, or wrap response | breaking | add `/api/v2/message`, migrate frontend, then deprecate v1 with `Deprecation` header |
 | Add auth to `GET /api/v1/message` | breaking | create protected v2 endpoint or keep public v1 until replacement deployed |
 | Allow multiple messages | breaking for data and API semantics | revise SRS/ERD, add selection contract, migrate data after frontend understands new shape |
 
@@ -227,7 +227,7 @@ No third-party systems. Only internal SQL dependency exists.
 | Step | Forward | Backward | Safe on populated tables |
 |---|---|---|---|
 | 1 | Create `messages` table and constraints from ERD; seed canonical row `Hello Word` with `ON CONFLICT DO NOTHING` | Drop `messages` table | Safe when table absent; not safe over existing differently-shaped `messages` table without manual review |
-| 2 | Add backend contract `GET /api/v1/message` returning `{ "state": "ready", "message": string }` | Remove endpoint before frontend depends on real API; after frontend integration, rollback frontend first | yes; read-only endpoint |
+| 2 | Add backend contract `GET /api/v1/message` returning `{ "message": string }` | Remove endpoint before frontend depends on real API; after frontend integration, rollback frontend first | yes; read-only endpoint |
 | 3 | Add `GET /healthz` readiness check | Remove health route only if deployment health probe changes first | yes; read-only endpoint |
 
 No irreversible service migration.

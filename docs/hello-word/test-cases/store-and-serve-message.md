@@ -1,52 +1,63 @@
 # Test Cases — Store and serve message
 
-Risk level: low. One public stored message, but tests still cover read path, empty content, missing row, and Postgres outage because SRS names those failure states.
+Risk level: low. Scope is one stored public message, one backend read path, one frontend fetch path. Coverage focuses on acceptance criteria and named failure behaviors.
 
-## Acceptance criteria coverage
+## Automated cases
 
-- AC-1: backend returns `Hello Word` when database has stored message row.
-- AC-2: backend response contains stored text, not hardcoded frontend copy, when frontend requests page data.
-- AC-3: visitor sees one message value sourced from backend when page loads normally and stored row is present.
-- Invalid input: backend rejects empty stored message content and page does not render blank text.
-- Boundary: backend serves one printable line of normal length unchanged.
-- Not found: backend returns empty-data error state and frontend shows no stale text when row is missing.
-- Upstream failure: PostgreSQL unavailable returns error state and frontend shows no content rather than partial message.
-- Not permitted: not applicable; page is public.
-- Conflict: not applicable; only one current value is shown.
-
-## Scenarios
-
-**Scenario**: Store row returns stored text
-**Given** database has one stored message row with text `Hello Word`
+### Scenario: backend returns stored message row
+**Given** database has exactly one stored message row with text `Hello Word`
 **When** backend reads message
 **Then** backend returns `Hello Word`
 
-**Scenario**: Frontend uses backend message, not fallback copy
-**Given** frontend requests page data and backend response contains stored text `Hello Word`
+Trace: HELLO-WORD-001 AC-1
+
+### Scenario: frontend uses backend message, not hardcoded copy
+**Given** frontend requests page data and backend response contains stored message `Hello Word`
 **When** page data is fetched
-**Then** response includes stored text and does not use hardcoded frontend copy
+**Then** response includes stored text and does not replace it with frontend fallback copy
 
-**Scenario**: Page shows backend message on normal load
-**Given** page loads normally and stored row is present
+Trace: HELLO-WORD-001 AC-2
+
+### Scenario: page shows backend-provided message on normal load
+**Given** page loads normally and stored row is present with text `Hello Word`
 **When** visitor opens page
-**Then** visitor sees one message value sourced from backend
+**Then** visitor sees one message value, `Hello Word`, sourced from backend
 
-**Scenario**: Empty stored message is rejected
+Trace: HELLO-WORD-001 AC-3
+
+### Scenario: backend rejects empty stored message text
 **Given** stored message text is empty
-**When** backend reads message
-**Then** backend rejects empty content and page does not render blank text
+**When** backend tries to read or serve message
+**Then** backend rejects empty content and page renders no blank text
 
-**Scenario**: Normal printable line is served unchanged
+Trace: HELLO-WORD-001 failure case: Invalid input
+
+### Scenario: backend serves one printable line unchanged
 **Given** stored message text is one printable line of normal length
 **When** backend reads message
-**Then** backend serves it unchanged
+**Then** backend returns same text unchanged
 
-**Scenario**: Missing row shows empty-data error state
+Trace: HELLO-WORD-001 boundary case: Boundary
+
+### Scenario: missing row returns empty-data error state
 **Given** message row is missing
 **When** backend reads message
 **Then** backend returns empty-data error state and frontend shows no stale text
 
-**Scenario**: PostgreSQL outage shows no partial message
+Trace: HELLO-WORD-001 failure case: Not found
+
+### Scenario: PostgreSQL unavailable returns error state
 **Given** PostgreSQL is unavailable
 **When** backend tries to read message
 **Then** backend returns error state and frontend shows no content rather than partial message
+
+Trace: HELLO-WORD-001 failure case: Upstream failure
+
+## Manual case
+
+### Scenario: public page has no permission gate
+**Given** actor is Visitor opening public page
+**When** visitor requests page
+**Then** page is accessible without login and shows stored message
+
+Trace: HELLO-WORD-001 role: Visitor; failure case: Not permitted is not applicable because page is public

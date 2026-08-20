@@ -23,6 +23,7 @@
   --space-12: 48px;
   --font-body: Arial, Helvetica, sans-serif;
   --font-heading: Arial, Helvetica, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   --text-3xl-size: clamp(2.5rem, 8vw, 6rem);
   --text-3xl-line: 1;
   --text-3xl-weight: 400;
@@ -39,18 +40,18 @@
   --easing: linear;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 html,
 body {
   min-height: 100%;
+  margin: 0;
 }
 
 body {
-  margin: 0;
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-body);
-}
-
-* {
-  box-sizing: border-box;
 }

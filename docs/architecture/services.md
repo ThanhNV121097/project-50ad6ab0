@@ -115,15 +115,15 @@ No request body. Requests with body content are ignored; clients must not send o
 
 ```json
 {
-  "state": "ready",
   "message": "Hello Word"
 }
 ```
 
 | Field | Type | Nullable | Description |
 |---|---|---|---|
-| `state` | string enum `ready` | no | Matches reviewed frontend mock success discriminator |
 | `message` | string | no | Current stored message content, one printable non-empty line, served unchanged as plain text |
+
+**Mock alignment** — Reviewed UI mock `MessageApiResponse` is exactly `{ "message": string }`. Service intentionally omits a `state` success discriminator because frontend state is local UI state, not API data.
 
 **Errors** — every code this endpoint can return. No others.
 

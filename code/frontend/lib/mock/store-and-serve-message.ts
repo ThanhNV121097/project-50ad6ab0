@@ -1,10 +1,7 @@
-export type MessageResponse =
-  | { state: 'loading' }
-  | { state: 'empty' }
-  | { state: 'error'; error: { code: 'NOT_FOUND' | 'UNAVAILABLE' | 'INTERNAL'; message: string } }
-  | { state: 'ready'; message: string };
+export type MessageApiResponse = {
+  message: string;
+};
 
-export const messageMock: MessageResponse = {
-  state: 'ready',
+export const messageMock: MessageApiResponse = {
   message: 'Hello Word',
 };

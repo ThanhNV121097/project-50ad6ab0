@@ -8,8 +8,5 @@
 
 .message {
   margin: 0;
-  font-size: var(--text-3xl-size);
-  line-height: var(--text-3xl-line);
-  font-weight: var(--text-3xl-weight);
-  font-family: var(--font-heading);
+  font: var(--text-3xl-weight) var(--text-3xl-size)/var(--text-3xl-line) var(--font-body);
 }

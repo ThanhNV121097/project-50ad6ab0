@@ -1,3 +1,5 @@
+import { MessagePage } from '../components/MessagePage';
+
 export default function Home() {
-  return <main className="min-h-screen" />;
+  return <MessagePage />;
 }

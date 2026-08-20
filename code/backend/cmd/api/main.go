@@ -2,8 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net/http"
@@ -13,8 +17,11 @@ import (
 	"time"
 
 	"github.com/ThanhNV121097/project-50ad6ab0/backend/migrations"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+const canonicalMessageID = "00000000-0000-0000-0000-000000000001"
 
 func main() {
 	ctx := context.Background()
@@ -35,14 +42,37 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		pingCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-		defer cancel()
-		if err := pool.Ping(pingCtx); err != nil {
-			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
+		requestID := requestIDFrom(r)
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "INTERNAL", "method not allowed", requestID)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok\n"))
+		healthCtx, cancel := context.WithTimeout(r.Context(), time.Second)
+		defer cancel()
+		if err := pool.Ping(healthCtx); err != nil {
+			writeError(w, http.StatusServiceUnavailable, "UNAVAILABLE", "database unavailable", requestID)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"}, requestID)
+	})
+	mux.HandleFunc("/v1/message", func(w http.ResponseWriter, r *http.Request) {
+		requestID := requestIDFrom(r)
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "INTERNAL", "method not allowed", requestID)
+			return
+		}
+		if err := rejectBody(r); err != nil {
+			writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "request body not allowed", requestID)
+			return
+		}
+		messageCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		message, err := loadMessage(messageCtx, pool)
+		if err != nil {
+			writeAppError(w, err, requestID)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"state": "ready", "message": message}, requestID)
 	})
 
 	addr := ":" + port()
@@ -52,6 +82,80 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
+func requestIDFrom(r *http.Request) string {
+	if value := strings.TrimSpace(r.Header.Get("X-Request-Id")); value != "" {
+		return value
+	}
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err == nil {
+		return hex.EncodeToString(b[:])
+	}
+	return fmt.Sprintf("req-%d", time.Now().UnixNano())
+}
+
+func rejectBody(r *http.Request) error {
+	if r.Body == nil {
+		return nil
+	}
+	defer r.Body.Close()
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	if len(body) == 0 {
+		return nil
+	}
+	return fmt.Errorf("request body not allowed")
+}
+
+func loadMessage(ctx context.Context, pool *pgxpool.Pool) (string, error) {
+	var content string
+	err := pool.QueryRow(ctx, `SELECT content FROM messages WHERE id = $1`, canonicalMessageID).Scan(&content)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", appError{status: http.StatusNotFound, code: "NOT_FOUND", message: "message missing"}
+		}
+		if isUnavailable(err) {
+			return "", appError{status: http.StatusServiceUnavailable, code: "UNAVAILABLE", message: "database unavailable"}
+		}
+		return "", appError{status: http.StatusInternalServerError, code: "INTERNAL", message: "internal server error"}
+	}
+	if strings.TrimSpace(content) == "" || strings.ContainsAny(content, "\r\n") {
+		return "", appError{status: http.StatusUnprocessableEntity, code: "VALIDATION_FAILED", message: "stored message invalid"}
+	}
+	return content, nil
+}
+
+type appError struct {
+	status  int
+	code    string
+	message string
+}
+
+func (e appError) Error() string { return e.message }
+
+func writeAppError(w http.ResponseWriter, err error, requestID string) {
+	var appErr appError
+	if errors.As(err, &appErr) {
+		writeError(w, appErr.status, appErr.code, appErr.message, requestID)
+		return
+	}
+	writeError(w, http.StatusInternalServerError, "INTERNAL", "internal server error", requestID)
+}
+
+func writeError(w http.ResponseWriter, status int, code, message, requestID string) {
+	writeJSON(w, status, map[string]any{"error": map[string]any{"code": code, "message": message, "details": []any{}, "request_id": requestID}}, requestID)
+}
+
+func writeJSON(w http.ResponseWriter, status int, payload any, requestID string) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("X-Request-Id", requestID)
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func isUnavailable(err error) bool { return strings.Contains(strings.ToLower(err.Error()), "timeout") || strings.Contains(strings.ToLower(err.Error()), "closed") || strings.Contains(strings.ToLower(err.Error()), "unavailable") }
 
 func port() string {
 	if value := os.Getenv("PORT"); value != "" {

@@ -99,9 +99,12 @@ func rejectBody(r *http.Request) error {
 		return nil
 	}
 	defer r.Body.Close()
-	_, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return err
+	}
+	if len(body) == 0 {
+		return nil
 	}
 	return fmt.Errorf("request body not allowed")
 }

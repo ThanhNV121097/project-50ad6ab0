@@ -6,11 +6,11 @@ const config: Config = {
     extend: {
       colors: {
         bg: "var(--color-bg)",
-        text: "var(--color-text)",
-      },
-    },
+        text: "var(--color-text)"
+      }
+    }
   },
-  plugins: [],
+  plugins: []
 };
 
 export default config;

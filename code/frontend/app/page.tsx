@@ -1,9 +1,5 @@
-export default function Home() {
-  return <main className="flex min-h-screen items-center justify-center bg-white text-black">
-    <Message />
-  </main>;
-}
+import { MessagePage } from '../components/MessagePage';
 
-function Message() {
-  return <h1>Hello Word</h1>;
+export default function Home() {
+  return <MessagePage />;
 }

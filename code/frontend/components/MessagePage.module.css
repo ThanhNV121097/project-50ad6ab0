@@ -8,9 +8,9 @@
 
 .message {
   margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-3xl-size);
-  line-height: var(--text-3xl-line);
-  font-weight: var(--text-3xl-weight);
+  font-family: var(--font-body);
+  font-size: var(--text-3xl);
+  line-height: 1;
+  font-weight: 400;
   text-align: center;
 }

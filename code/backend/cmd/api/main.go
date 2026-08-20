@@ -61,10 +61,14 @@ func main() {
 			writeError(w, http.StatusMethodNotAllowed, "INTERNAL", "method not allowed", requestID)
 			return
 		}
-			if len(r.URL.Query()) > 0 {
-				writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "query parameters not allowed", requestID)
-				return
-			}
+		if err := rejectBody(r); err != nil {
+			writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "request body not allowed", requestID)
+			return
+		}
+		if len(r.URL.Query()) > 0 {
+			writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "query parameters not allowed", requestID)
+			return
+		}
 		messageCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
 		message, err := loadMessage(messageCtx, pool)

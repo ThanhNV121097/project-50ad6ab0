@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
 import "./globals.css";
+
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "hello-word",
-  description: "Single stored message page",
+  description: "Single stored message page"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -84,11 +84,11 @@ func rejectBody(r *http.Request) error {
 		return nil
 	}
 	defer r.Body.Close()
-	b, err := io.ReadAll(r.Body)
+	_, err := io.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-	return io.EOF
+	return fmt.Errorf("request body not allowed")
 }
 
 func loadMessage(ctx context.Context, pool *pgxpool.Pool) (string, error) {

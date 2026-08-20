@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,31 +41,33 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		reqID := requestID(r)
 		if r.Method != http.MethodGet {
-			writeError(w, http.StatusMethodNotAllowed, "INTERNAL", "method not allowed", nil, requestID(r))
+			writeError(w, http.StatusMethodNotAllowed, "INTERNAL", "method not allowed", []string{}, reqID)
 			return
 		}
 		pingCtx, cancel := context.WithTimeout(r.Context(), time.Second)
 		defer cancel()
 		if err := pool.Ping(pingCtx); err != nil {
-			writeError(w, http.StatusServiceUnavailable, "UNAVAILABLE", "database unavailable", nil, requestID(r))
+			writeError(w, http.StatusServiceUnavailable, "UNAVAILABLE", "database unavailable", []string{}, reqID)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"}, reqID)
 	})
 	mux.HandleFunc("/v1/message", func(w http.ResponseWriter, r *http.Request) {
+		reqID := requestID(r)
 		if r.Method != http.MethodGet {
-			writeError(w, http.StatusMethodNotAllowed, "INTERNAL", "method not allowed", nil, requestID(r))
+			writeError(w, http.StatusMethodNotAllowed, "INTERNAL", "method not allowed", []string{}, reqID)
 			return
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
 		message, code, status, err := loadMessage(ctx, pool)
 		if err != nil {
-			writeError(w, status, code, err.Error(), nil, requestID(r))
+			writeError(w, status, code, err.Error(), []string{}, reqID)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"state": "ready", "message": message})
+		writeJSON(w, http.StatusOK, map[string]string{"state": "ready", "message": message}, reqID)
 	})
 
 	addr := ":" + port()
@@ -90,21 +94,26 @@ func loadMessage(ctx context.Context, pool *pgxpool.Pool) (string, string, int, 
 	return content, "", 0, nil
 }
 
-func writeJSON(w http.ResponseWriter, status int, payload any) {
+func writeJSON(w http.ResponseWriter, status int, payload any, requestID string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("X-Request-Id", requestID)
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
 func writeError(w http.ResponseWriter, status int, code, message string, details []string, requestID string) {
-	writeJSON(w, status, map[string]any{"error": map[string]any{"code": code, "message": message, "details": details, "request_id": requestID}})
+	writeJSON(w, status, map[string]any{"error": map[string]any{"code": code, "message": message, "details": details, "request_id": requestID}}, requestID)
 }
 
 func requestID(r *http.Request) string {
-	if value := r.Header.Get("X-Request-Id"); value != "" {
+	if value := strings.TrimSpace(r.Header.Get("X-Request-Id")); value != "" {
 		return value
 	}
-	return ""
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return fmt.Sprintf("req-%d", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b[:])
 }
 
 func port() string {

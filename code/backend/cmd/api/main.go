@@ -116,7 +116,7 @@ func loadMessage(ctx context.Context, pool *pgxpool.Pool) (string, error) {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", appError{status: http.StatusNotFound, code: "NOT_FOUND", message: "message missing"}
 		}
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		if isUnavailable(err) {
 			return "", appError{status: http.StatusServiceUnavailable, code: "UNAVAILABLE", message: "database unavailable"}
 		}
 		return "", appError{status: http.StatusInternalServerError, code: "INTERNAL", message: "internal server error"}

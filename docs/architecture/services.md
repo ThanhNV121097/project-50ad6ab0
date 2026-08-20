@@ -2,6 +2,8 @@
 
 Last updated: 2026-08-20
 Source: `docs/hello-word/SRS.md`, `docs/architecture/erd.md`, `docs/architecture/overview.md`
+Story extension: `docs/hello-word/stories/store-and-serve-message.md`
+Reviewed UI mock: `code/frontend/lib/mock/store-and-serve-message.ts`
 
 ## 1. Service map
 
@@ -54,6 +56,8 @@ Every non-2xx JSON response from `/api/v1/*` has this shape:
 ```
 
 Consumers branch on `code`. `message` may change without contract notice. `details` is empty when no field-level validation error exists.
+
+The reviewed UI mock accepts `error.code` values `INTERNAL`, `UNAVAILABLE`, and `NOT_FOUND`; backend also returns `VALIDATION_FAILED` for corrupt stored content. Frontend BE integration must map any API error into mock state `error`, and map `NOT_FOUND` to mock state `empty` if it wants current empty UI branch.
 
 **Error catalog** — closed set for this project.
 
@@ -111,24 +115,26 @@ No request body. Requests with body content are ignored; clients must not send o
 
 ```json
 {
+  "state": "ready",
   "message": "Hello Word"
 }
 ```
 
 | Field | Type | Nullable | Description |
 |---|---|---|---|
+| `state` | string enum `ready` | no | Matches reviewed frontend mock success discriminator |
 | `message` | string | no | Current stored message content, one printable non-empty line, served unchanged as plain text |
 
 **Errors** — every code this endpoint can return. No others.
 
-| Code | HTTP | Trigger |
-|---|---|---|
-| `VALIDATION_FAILED` | 422 | Stored `messages.content` is empty, blank, or contains newline despite database constraint |
-| `NOT_FOUND` | 404 | Canonical `messages` row is missing |
-| `UNAVAILABLE` | 503 | PostgreSQL query fails due to unavailable dependency, timeout, or service draining |
-| `INTERNAL` | 500 | Unexpected server failure not classified above |
+| Code | HTTP | Trigger | Frontend mock state |
+|---|---|---|---|
+| `VALIDATION_FAILED` | 422 | Stored `messages.content` is empty, blank, or contains newline despite database constraint | `error` |
+| `NOT_FOUND` | 404 | Canonical `messages` row is missing | `empty` |
+| `UNAVAILABLE` | 503 | PostgreSQL query fails due to unavailable dependency, timeout, or service draining | `error` |
+| `INTERNAL` | 500 | Unexpected server failure not classified above | `error` |
 
-**Notes** — Safe and idempotent read. No side effects. Backend query timeout: 2 seconds. No retry inside request handler; frontend may retry on user/page refresh only. Frontend failure behavior: show no stale or fallback message, keep plain white page, and may expose empty/error state without placeholder copy.
+**Notes** — Safe and idempotent read. No side effects. Backend query timeout: 2 seconds. No retry inside request handler; frontend may retry on user/page refresh only. Frontend failure behavior: show no stale or fallback message. Reviewed mock uses local `loading`, `empty`, and `error` UI states; backend does not emit `loading` because loading exists only before HTTP response.
 
 ### 3.2 `GET /healthz`
 
@@ -161,7 +167,7 @@ No request body.
 ```
 
 | Field | Type | Nullable | Description |
-|---|---|---|---|
+|---|---|---|
 | `status` | string enum `ok` | no | Service ready; migrations have succeeded and `SELECT 1` works |
 
 **Errors** — every code this endpoint can return. No others.
@@ -212,17 +218,27 @@ No third-party systems. Only internal SQL dependency exists.
 |---|---|---|
 | Add optional response field to `GET /api/v1/message` | additive | frontend ignores unknown fields |
 | Add new endpoint under `/api/v1` | additive | no migration needed |
-| Rename `message` field, change its type, or wrap response | breaking | add `/api/v2/message`, migrate frontend, then deprecate v1 with `Deprecation` header |
+| Rename `state` or `message` field, change its type, or wrap response | breaking | add `/api/v2/message`, migrate frontend, then deprecate v1 with `Deprecation` header |
 | Add auth to `GET /api/v1/message` | breaking | create protected v2 endpoint or keep public v1 until replacement deployed |
 | Allow multiple messages | breaking for data and API semantics | revise SRS/ERD, add selection contract, migrate data after frontend understands new shape |
 
-## 9. Open questions
+## 9. Migration plan
+
+| Step | Forward | Backward | Safe on populated tables |
+|---|---|---|---|
+| 1 | Create `messages` table and constraints from ERD; seed canonical row `Hello Word` with `ON CONFLICT DO NOTHING` | Drop `messages` table | Safe when table absent; not safe over existing differently-shaped `messages` table without manual review |
+| 2 | Add backend contract `GET /api/v1/message` returning `{ "state": "ready", "message": string }` | Remove endpoint before frontend depends on real API; after frontend integration, rollback frontend first | yes; read-only endpoint |
+| 3 | Add `GET /healthz` readiness check | Remove health route only if deployment health probe changes first | yes; read-only endpoint |
+
+No irreversible service migration.
+
+## 10. Open questions
 
 | Question | Owner | Blocking |
 |---|---|---|
 | none | PM / stakeholder | no |
 
-## 10. Requirement traceability
+## 11. Requirement traceability
 
 | Requirement | Endpoint(s) | Coverage |
 |---|---|---|

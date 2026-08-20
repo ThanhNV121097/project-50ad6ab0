@@ -1,36 +1,49 @@
 "use client";
 
-import type { MessageResponse } from '../lib/mock/store-and-serve-message';
+import { useEffect, useState } from 'react';
 import styles from './MessagePage.module.css';
 
-export function MessagePage({ response }: { response: MessageResponse }) {
-  if (response.state === 'loading') {
-    return (
-      <main className={styles.shell} aria-busy="true" aria-live="polite">
-        <p className={styles.message}>Loading</p>
-      </main>
-    );
+type MessageState = 'loading' | 'ready' | 'empty' | 'error';
+
+const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '/api';
+
+export function MessagePage() {
+  const [state, setState] = useState<MessageState>('loading');
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch(`${apiBase}/v1/message`, { signal: controller.signal })
+      .then(async (response) => {
+        if (response.status === 404) {
+          setState('empty');
+          return;
+        }
+        if (!response.ok) {
+          setState('error');
+          return;
+        }
+        const data = (await response.json()) as { message: string };
+        setMessage(data.message);
+        setState('ready');
+      })
+      .catch(() => setState('error'));
+
+    return () => controller.abort();
+  }, []);
+
+  if (state === 'loading') {
+    return <main className={styles.shell} aria-busy="true" aria-live="polite"><p className={styles.message}>Loading</p></main>;
   }
 
-  if (response.state === 'error') {
-    return (
-      <main className={styles.shell} aria-live="polite">
-        <p className={styles.message}>Error</p>
-      </main>
-    );
+  if (state === 'error') {
+    return <main className={styles.shell} aria-live="polite"><p className={styles.message}>Error</p></main>;
   }
 
-  if (response.state === 'empty') {
-    return (
-      <main className={styles.shell} aria-live="polite">
-        <p className={styles.message}>No message</p>
-      </main>
-    );
+  if (state === 'empty') {
+    return <main className={styles.shell} aria-live="polite" />;
   }
 
-  return (
-    <main className={styles.shell}>
-      <h1 className={styles.message}>{response.message}</h1>
-    </main>
-  );
+  return <main className={styles.shell}><h1 className={styles.message}>{message}</h1></main>;
 }

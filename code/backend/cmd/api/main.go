@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ThanhNV121097/project-50ad6ab0/backend/internal/migrations"
+	"github.com/ThanhNV121097/project-50ad6ab0/backend/migrations"
 	"github.com/jackc/pgx/v5"
 )
 

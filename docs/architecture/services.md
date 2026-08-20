@@ -119,6 +119,17 @@ No request body. Requests with body content are ignored; clients must not send o
 |---|---|---|---|
 | `message` | string | no | Current stored message content, one printable non-empty line, served unchanged as plain text |
 
+**Frontend state mapping for reviewed UI mock**
+
+| API result | Frontend mock state |
+|---|---|
+| request pending | `{ state: 'loading' }` |
+| `200` with `message` containing non-blank string | `{ state: 'success', message }` |
+| `200` with blank `message`, `404 NOT_FOUND`, or `422 VALIDATION_FAILED` | `{ state: 'empty' }` |
+| `500 INTERNAL` or `503 UNAVAILABLE` | `{ state: 'error', error: { code: 'INTERNAL', message } }` |
+
+Only frontend state differs from API envelope. Backend keeps project-wide error contract; frontend adapter maps closed error catalog into reviewed component state.
+
 **Errors** — every code this endpoint can return. No others.
 
 | Code | HTTP | Trigger |
@@ -216,15 +227,37 @@ No third-party systems. Only internal SQL dependency exists.
 | Add auth to `GET /api/v1/message` | breaking | create protected v2 endpoint or keep public v1 until replacement deployed |
 | Allow multiple messages | breaking for data and API semantics | revise SRS/ERD, add selection contract, migrate data after frontend understands new shape |
 
-## 9. Open questions
+## 9. Story extensions
 
-| Question | Owner | Blocking |
-|---|---|---|
-| none | PM / stakeholder | no |
+### 9.1 Render centered message
 
-## 10. Requirement traceability
+Reviewed UI mock module exposes four component states:
+
+```ts
+export type MessageResponse =
+  | { state: 'loading' }
+  | { state: 'error'; error: { code: 'INTERNAL'; message: string } }
+  | { state: 'empty' }
+  | { state: 'success'; message: string };
+```
+
+Backend endpoint remains `GET /api/v1/message` with success body `{ "message": "Hello Word" }` and project error envelope. No new endpoint, auth, request field, response field, pagination, or error code needed for this story. Frontend adapter must not invent fallback copy; non-success states render no message text.
+
+## 10. Migration plan
+
+| Story | Forward | Backward | Safe on populated table |
+|---|---|---|---|
+| Render centered message | No service migration. Implement frontend adapter against `GET /api/v1/message`; keep existing backend contract. | Remove frontend adapter/component consumption; no backend rollback. | yes; no API breaking change, no DDL, no data mutation |
+
+## 11. Requirement traceability
 
 | Requirement | Endpoint(s) | Coverage |
 |---|---|---|
 | HELLO-WORD-001 | `GET /api/v1/message`, `GET /healthz` | Stored row read from PostgreSQL, canonical seed/read failure states, backend readiness |
 | HELLO-WORD-002 | `GET /api/v1/message` | Frontend receives backend-provided plain text; UI states avoid fallback/stale copy on API failure |
+
+## 12. Open questions
+
+| Question | Owner | Blocking |
+|---|---|---|
+| none | PM / stakeholder | no |

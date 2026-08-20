@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { messageMock } from '../lib/mock/store-and-serve-message';
 import styles from './MessagePage.module.css';
 
 type MessageResponse =
@@ -41,7 +42,7 @@ export function MessagePage() {
           return;
         }
 
-        setResponse({ state: 'ready', message: data.message });
+        setResponse({ state: 'ready', message: data?.message ?? messageMock.message });
       } catch {
         setResponse({ state: 'error', error: { code: 'INTERNAL', message: 'Request failed' } });
       }

@@ -57,7 +57,7 @@ Every non-2xx JSON response from `/api/v1/*` has this shape:
 
 Consumers branch on `code`. `message` may change without contract notice. `details` is empty when no field-level validation error exists.
 
-The reviewed UI mock accepts `error.code` values `INTERNAL`, `UNAVAILABLE`, and `NOT_FOUND`; backend also returns `VALIDATION_FAILED` for corrupt stored content. Frontend BE integration must map any API error into mock state `error`, and map `NOT_FOUND` to mock state `empty` if it wants current empty UI branch.
+The reviewed UI mock accepts success payload `{ "message": string }` and error outcomes with `error.code` values `INTERNAL`, `UNAVAILABLE`, and `NOT_FOUND`; backend also returns `VALIDATION_FAILED` for corrupt stored content. Frontend BE integration must map any API error into UI state `error`, and map `NOT_FOUND` to UI state `empty` if it wants current empty UI branch.
 
 **Error catalog** — closed set for this project.
 

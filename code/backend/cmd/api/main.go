@@ -115,6 +115,8 @@ type appError struct {
 	message string
 }
 
+func (e appError) Error() string { return e.message }
+
 func writeAppError(w http.ResponseWriter, err error) {
 	var appErr appError
 	if errors.As(err, &appErr) {

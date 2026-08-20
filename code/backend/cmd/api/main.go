@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -40,35 +42,37 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		requestID := requestIDFrom(r)
 		if r.Method != http.MethodGet {
-			writeError(w, http.StatusMethodNotAllowed, "INTERNAL", "method not allowed", "")
+			writeError(w, http.StatusMethodNotAllowed, "INTERNAL", "method not allowed", requestID)
 			return
 		}
 		healthCtx, cancel := context.WithTimeout(r.Context(), time.Second)
 		defer cancel()
 		if err := pool.Ping(healthCtx); err != nil {
-			writeError(w, http.StatusServiceUnavailable, "UNAVAILABLE", "database unavailable", "")
+			writeError(w, http.StatusServiceUnavailable, "UNAVAILABLE", "database unavailable", requestID)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"}, requestID)
 	})
 	mux.HandleFunc("/v1/message", func(w http.ResponseWriter, r *http.Request) {
+		requestID := requestIDFrom(r)
 		if r.Method != http.MethodGet {
-			writeError(w, http.StatusMethodNotAllowed, "INTERNAL", "method not allowed", "")
+			writeError(w, http.StatusMethodNotAllowed, "INTERNAL", "method not allowed", requestID)
 			return
 		}
 		if err := rejectBody(r); err != nil {
-			writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "request body not allowed", "")
+			writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "request body not allowed", requestID)
 			return
 		}
 		messageCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
 		message, err := loadMessage(messageCtx, pool)
 		if err != nil {
-			writeAppError(w, err)
+			writeAppError(w, err, requestID)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"state": "ready", "message": message})
+		writeJSON(w, http.StatusOK, map[string]string{"state": "ready", "message": message}, requestID)
 	})
 
 	addr := ":" + port()
@@ -77,6 +81,17 @@ func main() {
 	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
+}
+
+func requestIDFrom(r *http.Request) string {
+	if value := strings.TrimSpace(r.Header.Get("X-Request-Id")); value != "" {
+		return value
+	}
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err == nil {
+		return hex.EncodeToString(b[:])
+	}
+	return fmt.Sprintf("req-%d", time.Now().UnixNano())
 }
 
 func rejectBody(r *http.Request) error {
@@ -117,21 +132,22 @@ type appError struct {
 
 func (e appError) Error() string { return e.message }
 
-func writeAppError(w http.ResponseWriter, err error) {
+func writeAppError(w http.ResponseWriter, err error, requestID string) {
 	var appErr appError
 	if errors.As(err, &appErr) {
-		writeError(w, appErr.status, appErr.code, appErr.message, "")
+		writeError(w, appErr.status, appErr.code, appErr.message, requestID)
 		return
 	}
-	writeError(w, http.StatusInternalServerError, "INTERNAL", "internal server error", "")
+	writeError(w, http.StatusInternalServerError, "INTERNAL", "internal server error", requestID)
 }
 
 func writeError(w http.ResponseWriter, status int, code, message, requestID string) {
-	writeJSON(w, status, map[string]any{"error": map[string]any{"code": code, "message": message, "details": []any{}, "request_id": requestID}})
+	writeJSON(w, status, map[string]any{"error": map[string]any{"code": code, "message": message, "details": []any{}, "request_id": requestID}}, requestID)
 }
 
-func writeJSON(w http.ResponseWriter, status int, payload any) {
+func writeJSON(w http.ResponseWriter, status int, payload any, requestID string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("X-Request-Id", requestID)
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
 }

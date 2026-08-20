@@ -1,3 +1,5 @@
+import { CenteredMessage } from "../components/CenteredMessage";
+
 export default function Home() {
-  return <main className="min-h-screen" />;
+  return <CenteredMessage />;
 }

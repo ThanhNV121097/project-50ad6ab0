@@ -86,10 +86,27 @@ No table approaches 10M rows. No partitioning or archive needed.
 | # | Change | Forward | Backward | Safe on non-empty table |
 |---|---|---|---|---|
 | 1 | Initial message schema | `CREATE EXTENSION IF NOT EXISTS pgcrypto; CREATE TABLE messages (...); INSERT INTO messages (id, content) VALUES ('00000000-0000-0000-0000-000000000001', 'Hello Word') ON CONFLICT (id) DO NOTHING;` | `DROP TABLE IF EXISTS messages;` | yes for empty DB; on populated DB, `CREATE TABLE` is safe if table absent, seed is idempotent |
+| 2 | Render centered message story | No database change. Reuse `messages.content` as source for frontend `message` string. | No rollback needed beyond removing consuming frontend/backend code. | yes; no DDL or data mutation |
 
 No irreversible migration. Future change to more than one message must first drop `ck_messages_singleton` in separate migration and define selection rule.
 
-## 9. Open questions
+## 9. Story extensions
+
+### 9.1 Render centered message
+
+Reviewed UI mock contract:
+
+```ts
+export type MessageResponse =
+  | { state: 'loading' }
+  | { state: 'error'; error: { code: 'INTERNAL'; message: string } }
+  | { state: 'empty' }
+  | { state: 'success'; message: string };
+```
+
+Schema impact: none. `MessageResponse.success.message` maps to `messages.content`; `empty` maps to missing canonical row or invalid empty content; `error` maps to backend error catalog; `loading` is frontend-only state before API settles.
+
+## 10. Open questions
 
 | Question | Owner | Blocking |
 |---|---|---|

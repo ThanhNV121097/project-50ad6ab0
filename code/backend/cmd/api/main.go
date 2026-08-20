@@ -72,7 +72,7 @@ func main() {
 			writeAppError(w, err, requestID)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"state": "ready", "message": message}, requestID)
+		writeJSON(w, http.StatusOK, map[string]string{"message": message}, requestID)
 	})
 
 	addr := ":" + port()

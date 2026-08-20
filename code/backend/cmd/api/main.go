@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ThanhNV121097/project-50ad6ab0/backend/migrations"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -77,7 +78,7 @@ func loadMessage(ctx context.Context, pool *pgxpool.Pool) (string, string, int, 
 	var content string
 	err := pool.QueryRow(ctx, `select content from messages where id = $1`, canonicalMessageID).Scan(&content)
 	if err != nil {
-		if errors.Is(err, pgxpool.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return "", "NOT_FOUND", http.StatusNotFound, fmt.Errorf("message missing")
 		}
 		return "", "UNAVAILABLE", http.StatusServiceUnavailable, fmt.Errorf("database unavailable")

@@ -23,8 +23,6 @@ BEGIN
         ALTER COLUMN updated_at SET DEFAULT now(),
         ALTER COLUMN updated_at SET NOT NULL;
 
-    DELETE FROM messages;
-
     IF NOT EXISTS (
         SELECT 1
         FROM pg_constraint

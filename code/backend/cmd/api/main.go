@@ -44,7 +44,8 @@ func main() {
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		requestID := requestIDFrom(r)
 		if r.Method != http.MethodGet {
-			writeError(w, http.StatusMethodNotAllowed, "INTERNAL", "method not allowed", requestID)
+			w.Header().Set("Allow", http.MethodGet)
+			writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "method not allowed", requestID)
 			return
 		}
 		healthCtx, cancel := context.WithTimeout(r.Context(), time.Second)
@@ -58,7 +59,8 @@ func main() {
 	mux.HandleFunc("/v1/message", func(w http.ResponseWriter, r *http.Request) {
 		requestID := requestIDFrom(r)
 		if r.Method != http.MethodGet {
-			writeError(w, http.StatusMethodNotAllowed, "INTERNAL", "method not allowed", requestID)
+			w.Header().Set("Allow", http.MethodGet)
+			writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "method not allowed", requestID)
 			return
 		}
 		if err := rejectBody(r); err != nil {
